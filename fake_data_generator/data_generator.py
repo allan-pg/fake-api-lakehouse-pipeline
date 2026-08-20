@@ -1,24 +1,42 @@
 import json
+import logging
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import timezone
 from pathlib import Path
 
 from faker import Faker
 
 
+# Logging configuration
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+
+
+# Configuration
 fake = Faker()
 
+# Create path to data directory
 DATA_DIR = Path("data")
 
 CUSTOMERS_FILE = DATA_DIR / "customers.json"
 ORDERS_FILE = DATA_DIR / "orders.json"
 
-# set the number of customers and orders you need to generate
+# Number of records to generate
 NUMBER_OF_CUSTOMERS = 1000
 NUMBER_OF_ORDERS = 10000
 
-# generate customer jsons
+
+# Generate customers
+
 def generate_customers():
+
+    logger.info("Starting customer generation")
+
     customers = []
 
     for customer_id in range(1, NUMBER_OF_CUSTOMERS + 1):
@@ -45,10 +63,20 @@ def generate_customers():
 
         customers.append(customer)
 
+    logger.info(
+        "Customer generation complete | records=%s",
+        len(customers)
+    )
+
     return customers
 
-# generate order jsons
+
+# Generate orders
+
 def generate_orders(customers):
+
+    logger.info("Starting order generation")
+
     orders = []
 
     statuses = [
@@ -137,48 +165,112 @@ def generate_orders(customers):
 
         orders.append(order)
 
+    logger.info(
+        "Order generation complete | records=%s",
+        len(orders)
+    )
+
     return orders
 
-# save the json files in data dir
+
+# Save JSON
+
 def save_json(data, file_path):
 
-    with open(file_path, "w", encoding="utf-8") as file:
-        json.dump(
-            data,
-            file,
-            indent=2
+    logger.info(
+        "Saving JSON | file=%s | records=%s",
+        file_path,
+        len(data)
+    )
+
+    try:
+
+        with open(
+            file_path,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=2
+            )
+
+        logger.info(
+            "JSON successfully saved | file=%s",
+            file_path
         )
+
+    except OSError:
+
+        logger.exception(
+            "Failed to save JSON | file=%s",
+            file_path
+        )
+
+        raise
+
+
+
+# Main
 
 def main():
 
-    DATA_DIR.mkdir(exist_ok=True)
+    logger.info("Starting data generation pipeline")
 
-    print("Generating customers...")
+    try:
 
-    customers = generate_customers()
+        DATA_DIR.mkdir(
+            exist_ok=True
+        )
 
-    print(f"Generated {len(customers)} customers")
+        logger.info(
+            "Data directory ready | path=%s",
+            DATA_DIR
+        )
 
-    print("Generating orders...")
+        # Generate customers
+        customers = generate_customers()
 
-    orders = generate_orders(customers)
+        # Generate orders
+        orders = generate_orders(customers)
 
-    print(f"Generated {len(orders)} orders")
+        # Save customers
+        save_json(
+            customers,
+            CUSTOMERS_FILE
+        )
 
-    save_json(
-        customers,
-        CUSTOMERS_FILE
-    )
+        # Save orders
+        save_json(
+            orders,
+            ORDERS_FILE
+        )
 
-    save_json(
-        orders,
-        ORDERS_FILE
-    )
+        logger.info(
+            "Data generation completed successfully"
+        )
 
-    print()
-    print("Data generation complete.")
-    print(f"Customers: {CUSTOMERS_FILE}")
-    print(f"Orders: {ORDERS_FILE}")
+        logger.info(
+            "Customers file | path=%s | records=%s",
+            CUSTOMERS_FILE,
+            len(customers)
+        )
+
+        logger.info(
+            "Orders file | path=%s | records=%s",
+            ORDERS_FILE,
+            len(orders)
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Data generation pipeline failed"
+        )
+
+        raise
 
 
 if __name__ == "__main__":
