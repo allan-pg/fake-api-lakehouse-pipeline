@@ -6,15 +6,9 @@ from pathlib import Path
 
 from faker import Faker
 
+from utils.logging_config import get_logger
 
-# Logging configuration
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
-)
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Configuration
