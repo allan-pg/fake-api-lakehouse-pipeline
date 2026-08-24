@@ -191,10 +191,7 @@ def extract_and_land(url, endpoints, bucket_name):
 
         except (KeyError, TypeError):
 
-            logger.exception(
-                "Invalid API response structure | endpoint=%s",
-                endpoint
-            )
+            logger.exception("Invalid API response structure | endpoint=%s", endpoint)
 
             raise
 
@@ -259,10 +256,7 @@ def extract_and_land(url, endpoints, bucket_name):
         # Get MAX updated_at only after
         # all records were successfully uploaded
 
-        max_update_date = get_max_update_date(
-            records,
-            config["watermark_field"]
-        )
+        max_update_date = get_max_update_date(records, config["watermark_field"])
 
         endpoint_watermarks[endpoint] = max_update_date
 
