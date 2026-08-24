@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Query
@@ -37,15 +37,40 @@ def health():
     }
 
 # create a customers endpoint
+# create a customers endpoint
 @app.get("/customers")
-def get_customers():
+def get_customers(
+    updated_after: datetime | None = None
+):
 
     customers = load_json(CUSTOMERS_FILE)
+
+    if updated_after is not None:
+
+        # Make sure the incoming timestamp is timezone-aware
+        if updated_after.tzinfo is None:
+            updated_after = updated_after.replace(
+                tzinfo=timezone.utc
+            )
+
+        filtered_customers = []
+
+        for customer in customers:
+
+            customer_updated_at = datetime.fromisoformat(
+                customer["updated_at"]
+            )
+
+            if customer_updated_at > updated_after:
+                filtered_customers.append(customer)
+
+        customers = filtered_customers
 
     return {
         "data": customers,
         "total_records": len(customers)
     }
+
 
 # create orders endpoint and have them paginated such that 1 page has 100 orders
 @app.get("/orders")
@@ -56,8 +81,14 @@ def get_orders(
 ):
 
     orders = load_json(ORDERS_FILE)
-
+    # check if the url has been filtered based on update at to only return records after that datetime
     if updated_after is not None:
+
+        # Make sure the incoming timestamp is timezone-aware
+        if updated_after.tzinfo is None:
+            updated_after = updated_after.replace(
+                tzinfo=timezone.utc
+            )
 
         filtered_orders = []
 
