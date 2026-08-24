@@ -24,13 +24,15 @@ ENDPOINTS = {
     "customers": {
         "id_field": "customer_id",
         "file_prefix": "customer",
-        "data_field": "data"
+        "data_field": "data",
+        "watermark_field": "updated_at"
     },
 
     "orders": {
         "id_field": "order_id",
         "file_prefix": "order",
-        "data_field": "data"
+        "data_field": "data",
+        "watermark_field": "updated_at"
     }
 }
 
@@ -82,38 +84,63 @@ def create_s3_bucket():
 
             raise
 
+def get_nested_value(record, field_path):
+    """
+    Get a value from a record using a field path.
+    """
 
+    value = record
+
+    for field in field_path.split("."):
+        value = value[field]
+
+    return value
+
+def get_max_update_date(records, watermark_field):
+    """
+    Get the maximum updated_at datetime from the records.
+    """
+
+    if not records:
+        return None
+
+    max_update_date = None
+
+    for record in records:
+
+        update_date = datetime.fromisoformat(
+            get_nested_value(record, watermark_field))
+
+        if (max_update_date is None or update_date > max_update_date):
+            max_update_date = update_date
+
+    return max_update_date
+
+# historical load that loads all the data to S3 then we can do incremental loads
 def extract_and_land(url, endpoints, bucket_name):
     """
     Extract data from multiple API endpoints
     and land each record as a JSON file in S3.
     """
 
+    endpoint_watermarks = {}
+
     for endpoint, config in endpoints.items():
 
         id_field = config["id_field"]
         file_prefix = config["file_prefix"]
 
-        logger.info(
-            "Starting extraction | endpoint=%s",
-            endpoint
-        )
+        logger.info("Starting extraction | endpoint=%s", endpoint)
 
         # Fetch endpoint
 
         try:
 
-            response = r.get(
-                f"{url}/{endpoint}",
-                timeout=30
-            )
+            response = r.get(f"{url}/{endpoint}", timeout=30)
 
         except r.RequestException:
 
-            logger.exception(
-                "API request failed | endpoint=%s",
-                endpoint
-            )
+            logger.exception("API request failed | endpoint=%s", endpoint)
 
             raise
 
@@ -135,6 +162,8 @@ def extract_and_land(url, endpoints, bucket_name):
                 f"response={response.text}"
             )
 
+        # Parse response
+
         try:
 
             data_field = config["data_field"]
@@ -143,9 +172,7 @@ def extract_and_land(url, endpoints, bucket_name):
 
             if data_field not in response_data:
 
-                raise KeyError(
-                    f"Expected '{data_field}' field missing from {endpoint}"
-                )
+                raise KeyError(f"Expected '{data_field}' field missing from {endpoint}")
 
             records = response_data[data_field]
 
@@ -158,12 +185,17 @@ def extract_and_land(url, endpoints, bucket_name):
 
         except ValueError:
 
-            logger.exception(   "Failed to parse response as JSON | endpoint=%s",  endpoint)
+            logger.exception("Failed to parse response as JSON | endpoint=%s", endpoint)
+
             raise
 
         except (KeyError, TypeError):
 
-            logger.exception("Invalid API response structure | endpoint=%s", endpoint)
+            logger.exception(
+                "Invalid API response structure | endpoint=%s",
+                endpoint
+            )
+
             raise
 
         logger.info(
@@ -178,7 +210,9 @@ def extract_and_land(url, endpoints, bucket_name):
 
         ingestion_date = ingestion_time.strftime("%Y-%m-%d")
 
-        ingestion_timestamp = ingestion_time.strftime("%Y%m%dT%H%M%S")
+        ingestion_timestamp = ingestion_time.strftime(
+            "%Y%m%dT%H%M%S"
+        )
 
         # Write records to S3
 
@@ -222,11 +256,25 @@ def extract_and_land(url, endpoints, bucket_name):
                 s3_key
             )
 
-        logger.info(
-            "Endpoint completed | endpoint=%s | records=%s",
-            endpoint,
-            len(records)
+        # Get MAX updated_at only after
+        # all records were successfully uploaded
+
+        max_update_date = get_max_update_date(
+            records,
+            config["watermark_field"]
         )
+
+        endpoint_watermarks[endpoint] = max_update_date
+
+        logger.info(
+            "Endpoint completed | endpoint=%s | "
+            "records=%s | max_updated_at=%s",
+            endpoint,
+            len(records),
+            max_update_date
+        )
+
+    return endpoint_watermarks
 
 
 def main():
@@ -234,21 +282,37 @@ def main():
     logger.info("Started source to landing pipeline")
 
     try:
+
         # create an s3 bucket
         create_s3_bucket()
+
         # extract customers & orders to s3
-        extract_and_land(
+        endpoint_watermarks = extract_and_land(
             url=API_URL,
             endpoints=ENDPOINTS,
             bucket_name=BUCKETS[0]
         )
 
+        # Save watermark only after the
+        # extraction and landing succeeds
+
+        for endpoint, watermark in endpoint_watermarks.items():
+
+            save_watermark(
+                bucket_name=BUCKETS[0],
+                endpoint=endpoint,
+                watermark=watermark
+            )
+
         logger.info("Source to landing pipeline completed successfully")
 
     except Exception:
+
         logger.exception("Source to landing pipeline failed")
+
         raise
 
 
 if __name__ == "__main__":
     main()
+
