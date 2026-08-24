@@ -40,15 +40,19 @@ def health():
 # create a customers endpoint
 @app.get("/customers")
 def get_customers(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=1000),
     updated_after: datetime | None = None
 ):
 
     customers = load_json(CUSTOMERS_FILE)
 
+    # Filter customers based on updated_after
     if updated_after is not None:
 
         # Make sure the incoming timestamp is timezone-aware
         if updated_after.tzinfo is None:
+
             updated_after = updated_after.replace(
                 tzinfo=timezone.utc
             )
@@ -61,14 +65,47 @@ def get_customers(
                 customer["updated_at"]
             )
 
+            # Make sure the customer timestamp is timezone-aware
+            if customer_updated_at.tzinfo is None:
+
+                customer_updated_at = customer_updated_at.replace(
+                    tzinfo=timezone.utc
+                )
+
             if customer_updated_at > updated_after:
+
                 filtered_customers.append(customer)
 
         customers = filtered_customers
 
+    # Total records after filtering
+    total_records = len(customers)
+
+    # Calculate pagination positions
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    # Get records for current page
+    paginated_customers = customers[start:end]
+
+    # Calculate total pages
+    total_pages = (
+        total_records + page_size - 1
+    ) // page_size
+
+    # Determine if another page exists
+    has_next = page < total_pages
+
     return {
-        "data": customers,
-        "total_records": len(customers)
+        "data": paginated_customers,
+
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_records": total_records,
+            "total_pages": total_pages,
+            "has_next": has_next
+        }
     }
 
 
