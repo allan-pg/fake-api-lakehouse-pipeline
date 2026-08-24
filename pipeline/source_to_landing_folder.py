@@ -32,10 +32,9 @@ ENDPOINTS = {
         "id_field": "order_id",
         "file_prefix": "order",
         "data_field": "data",
-        "watermark_field": "updated_at"
+        "watermark_field": "audit.updated_at"
     }
 }
-
 
 # list of buckets to create in s3
 BUCKETS = ["fake-api-lakehouse-landing-2026"]
@@ -270,6 +269,55 @@ def extract_and_land(url, endpoints, bucket_name):
 
     return endpoint_watermarks
 
+def save_watermark(bucket_name, endpoint, watermark):
+    """
+    Save the latest successful watermark to the S3 control area.
+    """
+
+    if watermark is None:
+
+        logger.info(
+            "No watermark to save | endpoint=%s",
+            endpoint
+        )
+
+        return
+
+    watermark_data = {
+        "endpoint": endpoint,
+        "watermark": watermark.isoformat()
+    }
+
+    s3_key = f"control/watermarks/{endpoint}.json"
+
+    try:
+
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=s3_key,
+            Body=json.dumps(
+                watermark_data,
+                indent=2
+            ),
+            ContentType="application/json"
+        )
+
+        logger.info(
+            "Watermark saved | endpoint=%s | "
+            "watermark=%s | s3_key=%s",
+            endpoint,
+            watermark,
+            s3_key
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Failed to save watermark | endpoint=%s",
+            endpoint
+        )
+
+        raise
 
 def main():
 
