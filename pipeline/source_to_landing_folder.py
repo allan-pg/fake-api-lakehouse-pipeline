@@ -116,6 +116,7 @@ def get_max_update_date(records, watermark_field):
     return max_update_date
 
 # historical load that loads all the data to S3 then we can do incremental loads
+# historical load that loads all the data to S3 then we can do incremental loads
 def extract_and_land(url, endpoints, bucket_name):
     """
     Extract data from multiple API endpoints
@@ -129,76 +130,139 @@ def extract_and_land(url, endpoints, bucket_name):
         id_field = config["id_field"]
         file_prefix = config["file_prefix"]
 
-        logger.info("Starting extraction | endpoint=%s", endpoint)
+        logger.info(
+            "Starting extraction | endpoint=%s",
+            endpoint
+        )
 
-        # Fetch endpoint
+        # Keep collecting records from all pages
+        all_records = []
 
-        try:
+        page = 1
+        page_size = 100
 
-            response = r.get(f"{url}/{endpoint}", timeout=30)
+        while True:
 
-        except r.RequestException:
-
-            logger.exception("API request failed | endpoint=%s", endpoint)
-
-            raise
-
-        # Validate response
-
-        if response.status_code != 200:
-
-            logger.error(
-                "API request failed | endpoint=%s | "
-                "status_code=%s | response=%s",
+            logger.info(
+                "Fetching page | endpoint=%s | page=%s | page_size=%s",
                 endpoint,
-                response.status_code,
-                response.text
+                page,
+                page_size
             )
 
-            raise Exception(
-                f"Failed to fetch {endpoint} | "
-                f"status_code={response.status_code} | "
-                f"response={response.text}"
-            )
+            # Fetch endpoint
 
-        # Parse response
+            try:
 
-        try:
-
-            data_field = config["data_field"]
-
-            response_data = response.json()
-
-            if data_field not in response_data:
-
-                raise KeyError(f"Expected '{data_field}' field missing from {endpoint}")
-
-            records = response_data[data_field]
-
-            if not isinstance(records, list):
-
-                raise TypeError(
-                    f"Expected '{data_field}' to be a list for {endpoint}, "
-                    f"got {type(records).__name__}"
+                response = r.get(
+                    f"{url}/{endpoint}",
+                    params={
+                        "page": page,
+                        "page_size": page_size
+                    },
+                    timeout=30
                 )
 
-        except ValueError:
+            except r.RequestException:
 
-            logger.exception("Failed to parse response as JSON | endpoint=%s", endpoint)
+                logger.exception(
+                    "API request failed | endpoint=%s | page=%s",
+                    endpoint,
+                    page
+                )
 
-            raise
+                raise
 
-        except (KeyError, TypeError):
+            # Validate response
 
-            logger.exception("Invalid API response structure | endpoint=%s", endpoint)
+            if response.status_code != 200:
 
-            raise
+                logger.error(
+                    "API request failed | endpoint=%s | "
+                    "page=%s | status_code=%s | response=%s",
+                    endpoint,
+                    page,
+                    response.status_code,
+                    response.text
+                )
+
+                raise Exception(
+                    f"Failed to fetch {endpoint} | "
+                    f"page={page} | "
+                    f"status_code={response.status_code} | "
+                    f"response={response.text}"
+                )
+
+            # Parse response
+
+            try:
+
+                data_field = config["data_field"]
+
+                response_data = response.json()
+
+                if data_field not in response_data:
+
+                    raise KeyError(
+                        f"Expected '{data_field}' field missing "
+                        f"from {endpoint}"
+                    )
+
+                records = response_data[data_field]
+
+                if not isinstance(records, list):
+
+                    raise TypeError(
+                        f"Expected '{data_field}' to be a list "
+                        f"for {endpoint}, "
+                        f"got {type(records).__name__}"
+                    )
+
+            except ValueError:
+
+                logger.exception(
+                    "Failed to parse response as JSON | "
+                    "endpoint=%s | page=%s",
+                    endpoint,
+                    page
+                )
+
+                raise
+
+            except (KeyError, TypeError):
+
+                logger.exception(
+                    "Invalid API response structure | "
+                    "endpoint=%s | page=%s",
+                    endpoint,
+                    page
+                )
+
+                raise
+
+            logger.info(
+                "Data fetched | endpoint=%s | page=%s | records=%s",
+                endpoint,
+                page,
+                len(records)
+            )
+
+            # Add this page's records to all_records
+
+            all_records.extend(records)
+
+            # Check pagination information
+
+            pagination = response_data.get("pagination", {})
+
+            has_next = pagination.get("has_next", False)
+
+            if not has_next:
+                break
+            page += 1
 
         logger.info(
-            "Data fetched | endpoint=%s | records=%s",
-            endpoint,
-            len(records)
-        )
+            "All pages fetched | endpoint=%s | total_records=%s", endpoint, len(all_records))
 
         # Ingestion timestamp
 
@@ -206,13 +270,11 @@ def extract_and_land(url, endpoints, bucket_name):
 
         ingestion_date = ingestion_time.strftime("%Y-%m-%d")
 
-        ingestion_timestamp = ingestion_time.strftime(
-            "%Y%m%dT%H%M%S"
-        )
+        ingestion_timestamp = ingestion_time.strftime("%Y%m%dT%H%M%S")
 
         # Write records to S3
 
-        for record in records:
+        for record in all_records:
 
             record_id = record[id_field]
 
@@ -255,7 +317,10 @@ def extract_and_land(url, endpoints, bucket_name):
         # Get MAX updated_at only after
         # all records were successfully uploaded
 
-        max_update_date = get_max_update_date(records, config["watermark_field"])
+        max_update_date = get_max_update_date(
+            all_records,
+            config["watermark_field"]
+        )
 
         endpoint_watermarks[endpoint] = max_update_date
 
@@ -263,7 +328,7 @@ def extract_and_land(url, endpoints, bucket_name):
             "Endpoint completed | endpoint=%s | "
             "records=%s | max_updated_at=%s",
             endpoint,
-            len(records),
+            len(all_records),
             max_update_date
         )
 
