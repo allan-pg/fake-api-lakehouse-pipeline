@@ -1,5 +1,4 @@
 import json
-import logging
 import random
 from datetime import timezone
 from pathlib import Path

@@ -28,14 +28,10 @@ services:
 
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
-
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
 
     volumes:
       - ./dags:/opt/airflow/dags
@@ -44,17 +40,17 @@ services:
       - ./config:/opt/airflow/config
 
     command:
-    - bash
-    - -c
-    - |
+      - bash
+      - -c
+      - |
         airflow db migrate &&
         airflow users create \
-        --username admin \
-        --password admin \
-        --firstname Airflow \
-        --lastname Admin \
-        --role Admin \
-        --email admin@example.com
+          --username admin \
+          --password admin \
+          --firstname Airflow \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com
 
 
   airflow-api-server:
@@ -68,14 +64,10 @@ services:
 
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
-
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
 
     volumes:
       - ./dags:/opt/airflow/dags
@@ -101,12 +93,10 @@ services:
 
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
 
     volumes:
       - ./dags:/opt/airflow/dags
