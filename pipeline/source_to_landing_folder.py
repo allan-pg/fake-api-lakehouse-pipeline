@@ -445,44 +445,11 @@ def save_watermark(bucket_name, endpoint, watermark):
         logger.exception("Failed to save watermark | endpoint=%s", endpoint)
         raise
 
-
-def main():
-
-    logger.info("Started source to landing pipeline")
-
-    try:
-
-        # create an s3 bucket
-
-        create_s3_bucket()
-
-        # extract customers & orders to s3
-
-        endpoint_watermarks = extract_and_land(
-            url=API_URL,
-            endpoints=ENDPOINTS,
+def save_all_watermarks(endpoint_watermarks):
+    for endpoint, watermark in endpoint_watermarks.items():
+        save_watermark(
             bucket_name=BUCKETS[0],
-            lookback_hours=LOOKBACK_HOURS
+            endpoint=endpoint,
+            watermark=watermark
         )
 
-        # Save watermark only after the extraction and landing succeeds
-
-        for endpoint, watermark in endpoint_watermarks.items():
-
-            save_watermark(
-                bucket_name=BUCKETS[0],
-                endpoint=endpoint,
-                watermark=watermark
-            )
-
-        logger.info("Source to landing pipeline completed successfully")
-
-    except Exception:
-
-        logger.exception( "Source to landing pipeline failed")
-        raise
-
-
-if __name__ == "__main__":
-
-    main()
