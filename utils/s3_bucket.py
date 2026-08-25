@@ -4,7 +4,7 @@ import os
 from botocore.exceptions import ClientError
 
 load_dotenv()
-#create an s3 client to be used in creating s3 bucket
+#create an s3 client to create an s3 bucket
 s3_client = boto3.client(
         's3',
         region_name='eu-north-1',
