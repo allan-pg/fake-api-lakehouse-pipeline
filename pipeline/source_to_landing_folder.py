@@ -50,17 +50,11 @@ def create_s3_bucket():
                     }
                 )
 
-                logger.info(
-                    "Created bucket: %s",
-                    bucket
-                )
+                logger.info("Created bucket: %s",  bucket)
 
         except ClientError:
 
-            logger.exception(
-                "Error creating bucket: %s",
-                bucket
-            )
+            logger.exception("Error creating bucket: %s", bucket)
 
             raise
 
@@ -444,6 +438,7 @@ def save_watermark(bucket_name, endpoint, watermark):
 
         logger.exception("Failed to save watermark | endpoint=%s", endpoint)
         raise
+
 
 def save_all_watermarks(endpoint_watermarks):
     for endpoint, watermark in endpoint_watermarks.items():
