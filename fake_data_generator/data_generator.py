@@ -158,10 +158,7 @@ def generate_orders(customers):
 
         orders.append(order)
 
-    logger.info(
-        "Order generation complete | records=%s",
-        len(orders)
-    )
+    logger.info("Order generation complete | records=%s", len(orders))
 
     return orders
 
@@ -190,23 +187,17 @@ def save_json(data, file_path):
                 indent=2
             )
 
-        logger.info(
-            "JSON successfully saved | file=%s",
-            file_path
-        )
+        logger.info("JSON successfully saved | file=%s", file_path)
 
     except OSError:
 
-        logger.exception(
-            "Failed to save JSON | file=%s",
-            file_path
-        )
+        logger.exception("Failed to save JSON | file=%s", file_path)
 
         raise
 
 
 
-# Main
+# Main to generate fake data and save it locally for the fast api app since we are not saving it in a no sql db
 
 def main():
 
@@ -214,14 +205,9 @@ def main():
 
     try:
 
-        DATA_DIR.mkdir(
-            exist_ok=True
-        )
+        DATA_DIR.mkdir(exist_ok=True)
 
-        logger.info(
-            "Data directory ready | path=%s",
-            DATA_DIR
-        )
+        logger.info("Data directory ready | path=%s",  DATA_DIR)
 
         # Generate customers
         customers = generate_customers()
@@ -230,20 +216,12 @@ def main():
         orders = generate_orders(customers)
 
         # Save customers
-        save_json(
-            customers,
-            CUSTOMERS_FILE
-        )
+        save_json(customers,  CUSTOMERS_FILE)
 
         # Save orders
-        save_json(
-            orders,
-            ORDERS_FILE
-        )
+        save_json(orders, ORDERS_FILE )
 
-        logger.info(
-            "Data generation completed successfully"
-        )
+        logger.info("Data generation completed successfully")
 
         logger.info(
             "Customers file | path=%s | records=%s",
@@ -257,11 +235,10 @@ def main():
             len(orders)
         )
 
+    # incase of failure show the logs 
     except Exception:
 
-        logger.exception(
-            "Data generation pipeline failed"
-        )
+        logger.exception("Data generation pipeline failed")
 
         raise
 
