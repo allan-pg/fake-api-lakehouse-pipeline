@@ -19,24 +19,59 @@ DATA_DIR = Path("data")
 CUSTOMERS_FILE = DATA_DIR / "customers.json"
 ORDERS_FILE = DATA_DIR / "orders.json"
 
-# Number of records to generate
+"""
+# Initial Number of records to generate
 NUMBER_OF_CUSTOMERS = 1000
 NUMBER_OF_ORDERS = 10000
+"""
+
+# incremental records added 
+NUMBER_OF_NEW_CUSTOMERS = 4
+NUMBER_OF_NEW_ORDERS = 10
+
+# read the existing data
+def load_existing_json(file_path):
+
+    if not file_path.exists():
+        logger.info(
+            "File does not exist | file=%s | starting with empty dataset",
+            file_path
+        )
+        return []
+
+    try:
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            data = json.load(file)
+
+        logger.info("Existing data loaded | file=%s | records=%s", file_path, len(data))
+
+        return data
+
+    except (OSError, json.JSONDecodeError):
+
+        logger.exception("Failed to load existing JSON | file=%s", file_path)
+
+        raise
 
 
 # Generate customers
 
-def generate_customers():
+def generate_customers(start_id, number_of_customers):
 
-    logger.info("Starting customer generation")
+    logger.info("Starting customer generation | start_id=%s | records=%s", start_id, number_of_customers)
 
     customers = []
 
-    for customer_id in range(1, NUMBER_OF_CUSTOMERS + 1):
+    for customer_id in range(start_id, start_id + number_of_customers):
 
         created_at = fake.date_time_between(
-            start_date="-2y",
-            end_date="-30d",
+            start_date="-30d",
+            end_date="now",
             tzinfo=timezone.utc
         )
 
@@ -56,28 +91,17 @@ def generate_customers():
 
         customers.append(customer)
 
-    logger.info(
-        "Customer generation complete | records=%s",
-        len(customers)
-    )
-
     return customers
 
 
 # Generate orders
+def generate_orders(customers, start_id, number_of_orders):
 
-def generate_orders(customers):
-
-    logger.info("Starting order generation")
+    logger.info("Starting order generation | start_id=%s | records=%s", start_id,  number_of_orders)
 
     orders = []
 
-    statuses = [
-        "pending",
-        "processing",
-        "completed",
-        "cancelled"
-    ]
+    statuses = ["pending", "processing", "completed", "cancelled"]
 
     products = [
         {
@@ -107,7 +131,7 @@ def generate_orders(customers):
         }
     ]
 
-    for order_id in range(1, NUMBER_OF_ORDERS + 1):
+    for order_id in range(start_id, start_id + number_of_orders):
 
         customer = random.choice(customers)
 
@@ -201,44 +225,64 @@ def save_json(data, file_path):
 
 def main():
 
-    logger.info("Starting data generation pipeline")
+    logger.info("Starting incremental data generation")
 
     try:
 
         DATA_DIR.mkdir(exist_ok=True)
 
-        logger.info("Data directory ready | path=%s",  DATA_DIR)
+        # Load existing data
+        existing_customers = load_existing_json(CUSTOMERS_FILE)
+        existing_orders = load_existing_json(ORDERS_FILE)
 
-        # Generate customers
-        customers = generate_customers()
-
-        # Generate orders
-        orders = generate_orders(customers)
-
-        # Save customers
-        save_json(customers,  CUSTOMERS_FILE)
-
-        # Save orders
-        save_json(orders, ORDERS_FILE )
-
-        logger.info("Data generation completed successfully")
-
-        logger.info(
-            "Customers file | path=%s | records=%s",
-            CUSTOMERS_FILE,
-            len(customers)
+        # Determine next IDs
+        next_customer_id = (
+            max(
+                customer["customer_id"]
+                for customer in existing_customers
+            ) + 1
+            if existing_customers
+            else 1
         )
 
-        logger.info(
-            "Orders file | path=%s | records=%s",
-            ORDERS_FILE,
-            len(orders)
+        next_order_id = (
+            max(
+                order["order_id"]
+                for order in existing_orders
+            ) + 1
+            if existing_orders
+            else 1
         )
 
-    # incase of failure show the logs 
+        # Generate NEW customers
+        new_customers = generate_customers(
+            start_id=next_customer_id,
+            number_of_customers=NUMBER_OF_NEW_CUSTOMERS
+        )
+
+        # Combine existing + new
+        customers = existing_customers + new_customers
+
+        # Generate NEW orders
+        # Include all customers so orders can belong to
+        # either old or newly created customers
+        new_orders = generate_orders(customers=customers, start_id=next_order_id, number_of_orders=NUMBER_OF_NEW_ORDERS)
+
+        orders = existing_orders + new_orders
+
+        # Save combined datasets
+        save_json(customers, CUSTOMERS_FILE)
+        save_json(orders, ORDERS_FILE)
+
+        logger.info(
+            "Incremental generation completed | "
+            "new_customers=%s | new_orders=%s",
+            len(new_customers),
+            len(new_orders)
+        )
+
     except Exception:
-
-        logger.exception("Data generation pipeline failed")
+        logger.exception("Incremental data generation failed")
 
         raise
 
