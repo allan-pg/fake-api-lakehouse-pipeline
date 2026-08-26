@@ -106,6 +106,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080
       PYTHONPATH: /opt/airflow
 
     volumes:
