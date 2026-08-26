@@ -32,6 +32,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
+      PYTHONPATH: /opt/airflow
 
     volumes:
       - ./dags:/opt/airflow/dags
@@ -70,6 +71,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
+      PYTHONPATH: /opt/airflow
 
     volumes:
       - ./dags:/opt/airflow/dags
@@ -101,6 +103,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
+      PYTHONPATH: /opt/airflow
 
     volumes:
       - ./dags:/opt/airflow/dags
