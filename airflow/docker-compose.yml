@@ -21,6 +21,7 @@ services:
 
   airflow-init:
     image: apache/airflow:3.1.0
+    container_name: airflow-init
 
     depends_on:
       postgres:
@@ -30,8 +31,6 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow
 
     volumes:
@@ -53,12 +52,11 @@ services:
           --firstname Airflow \
           --lastname Admin \
           --role Admin \
-          --email admin@example.com
+          --email admin@example.com || true
 
 
   airflow-api-server:
     image: apache/airflow:3.1.0
-
     container_name: airflow-api-server
 
     depends_on:
@@ -69,8 +67,6 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow
 
     volumes:
@@ -84,13 +80,11 @@ services:
     ports:
       - "8080:8080"
 
-    command:
-      - api-server
+    command: api-server
 
 
   airflow-scheduler:
     image: apache/airflow:3.1.0
-
     container_name: airflow-scheduler
 
     depends_on:
@@ -104,8 +98,6 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080
       PYTHONPATH: /opt/airflow
 
@@ -117,13 +109,11 @@ services:
       - ./plugins:/opt/airflow/plugins
       - ./config:/opt/airflow/config
 
-    command:
-      - scheduler
+    command: scheduler
 
 
   airflow-dag-processor:
     image: apache/airflow:3.1.0
-
     container_name: airflow-dag-processor
 
     depends_on:
@@ -137,8 +127,6 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-      AIRFLOW__FAB__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow
 
     volumes:
@@ -149,17 +137,22 @@ services:
       - ./plugins:/opt/airflow/plugins
       - ./config:/opt/airflow/config
 
-    command:
-      - dag-processor
+    command: dag-processor
+
 
   api:
     container_name: fake-api
+
     build: ..
+
     command: uvicorn fast_api_app.app:app --host 0.0.0.0 --port 8000
+
     ports:
       - "8000:8000"
 
+    volumes:
+      - ../data:/app/data
+
 
 volumes:
-
   postgres_data:
