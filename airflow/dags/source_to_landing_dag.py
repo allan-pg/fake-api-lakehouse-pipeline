@@ -17,6 +17,20 @@ from utils.config import (
 )
 
 
+def save_watermarks_from_xcom(**context):
+
+    endpoint_watermarks = context["ti"].xcom_pull(
+        task_ids="extract_and_land"
+    )
+
+    if not endpoint_watermarks:
+        raise ValueError(
+            "No endpoint watermarks returned by extract_and_land"
+        )
+
+    save_all_watermarks(endpoint_watermarks)
+
+
 with DAG(
     dag_id="source_to_landing",
     start_date=datetime(2026, 8, 26),
@@ -43,10 +57,7 @@ with DAG(
 
     save_watermarks_task = PythonOperator(
         task_id="save_all_watermarks",
-        python_callable=save_all_watermarks,
-        op_kwargs={
-            "endpoint_watermarks": "{{ ti.xcom_pull(task_ids='extract_and_land') }}"
-        }
+        python_callable=save_watermarks_from_xcom
     )
 
     create_bucket_task >> extract_task >> save_watermarks_task
