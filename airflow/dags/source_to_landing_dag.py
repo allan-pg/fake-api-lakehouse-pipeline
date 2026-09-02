@@ -43,7 +43,10 @@ with DAG(
 
     save_watermarks_task = PythonOperator(
         task_id="save_all_watermarks",
-        python_callable=save_all_watermarks
+        python_callable=save_all_watermarks,
+        op_kwargs={
+            "endpoint_watermarks": "{{ ti.xcom_pull(task_ids='extract_and_land') }}"
+        }
     )
 
     create_bucket_task >> extract_task >> save_watermarks_task
