@@ -41,3 +41,35 @@ S3_BASE_PATH = s3_base_path
 # BRONZE LOCATION
 BRONZE_CATALOG = bronze_catalog
 BRONZE_SCHEMA = bronze_schema
+
+
+customer_schema = StructType([
+    StructField("customer_id", StringType(), True),
+    StructField("name", StringType(), True),
+    StructField("email", StringType(), True),
+    StructField("phone", StringType(), True),
+    StructField("address", StructType([
+        StructField("street", StringType(), True),
+        StructField("city", StringType(), True),
+        StructField("country", StringType(), True)
+    ]), True),
+    StructField("created_at", StringType(), True),
+    StructField("updated_at", StringType(), True)
+])
+
+df = spark.read.schema(customer_schema).json(
+    "s3://fake-api-lakehouse-landing-2026/customers/"
+)
+
+df = df.select(
+    F.col("customer_id"),
+    F.col("name"),
+    F.col("email"),
+    F.col("phone"),
+    F.col("address.street").alias("street"),
+    F.col("address.city").alias("city"),
+    F.col("address.country").alias("country"),
+    F.col("created_at"),
+    F.col("updated_at")
+).withColumn("ingestion_date", F.current_timestamp(UTC = True))
+display(df)
