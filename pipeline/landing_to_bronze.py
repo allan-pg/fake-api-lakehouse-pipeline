@@ -4,6 +4,9 @@ from datetime import datetime
 from pyspark.sql.types import StructType, ArrayType
 from pyspark.sql import DataFrame
 
+import re
+from datetime import datetime
+
 import logging
 
 logger = logging.getLogger("bronze_ingestion")
@@ -68,8 +71,6 @@ def get_watermark(source_id):
     return row["watermark"]
 
 
-import re
-from datetime import datetime
 
 
 def get_available_dates(source_path):
@@ -133,9 +134,7 @@ def read_source_data(config, dates):
             f"ingest_date={ingest_date}/"
         )
 
-        logger.info(
-            f"{config['source_id']}: Reading {path}"
-        )
+        logger.info(f"{config['source_id']}: Reading {path}")
 
         df = (
             spark.read
@@ -190,9 +189,7 @@ from delta.tables import DeltaTable
 
 def update_state(source_id, watermark):
 
-    logger.info(
-        f"{source_id}: Updating state watermark to {watermark}"
-    )
+    logger.info(f"{source_id}: Updating state watermark to {watermark}")
 
     state_delta = DeltaTable.forName(
         spark,
